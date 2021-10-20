@@ -7,15 +7,11 @@ maskMode = [[([[1, 1], [1, 0]], [[1, 0], [1, 0]]),
             ([[1, 1], [1, 0]], [[0, 1], [0, 1]])]]
 
 
-def pixilated(*imgs):
-    th_args = (127, 255, cv2.THRESH_BINARY)
-    result = []
-    for img in imgs:
-        tmp = cv2.resize(img, (256, 256), interpolation=cv2.INTER_AREA)
-        _, tmp = cv2.threshold(tmp, *th_args)
-        tmp = cv2.resize(tmp, (512, 512), interpolation=cv2.INTER_AREA)
-        result.append(tmp)
-    return result
+def pixilated(img):
+    tmp = cv2.resize(img, (256, 256), interpolation=cv2.INTER_AREA)
+    _, tmp = cv2.threshold(tmp, 127, 255, cv2.THRESH_BINARY)
+    tmp = cv2.resize(tmp, (512, 512), interpolation=cv2.INTER_AREA)
+    return tmp
 
 
 def getRotPoints(center, point):
@@ -53,50 +49,54 @@ def clockwise(m):
 
 
 def main():
-    img1 = cv2.imread('p1.png', 0)
-    img2 = cv2.imread('p2.png', 0)
-    img1Layer, img2Layer = pixilated(img1, img2)
+    img1Layer = pixilated(cv2.imread('image1.png', cv2.IMREAD_GRAYSCALE))
+    img2Layer = pixilated(cv2.imread('image2.png', cv2.IMREAD_GRAYSCALE))
 
     h, w = img1Layer.shape
     center = ((h-1)/2, (w-1)/2)
 
-    secret1Layer = np.zeros((h, w))
-    secret2Layer = np.zeros((h, w))
+    share1Layer = np.zeros((h, w))
+    share2Layer = np.zeros((h, w))
     visitedTable = np.zeros((h, w))
-    randomTable = np.random.uniform(0, 3, (h, w))
+    randomTable = np.random.uniform(0, 3, h*w//4)
+    rd_idx = 0
 
     for i in range(1, h, 2):
         for j in range(1, w, 2):
-
             if visitedTable[i][j]:
                 continue
+            randomMode = randomTable[rd_idx]
 
             for k, l in getRotPoints(center, (i, j)):
 
-                values = [1 if img1Layer[k][l] else 0,
-                          1 if img2Layer[k][l] else 0]
-                mask1, mask2 = getMask(randomTable[i][j], *values)
+                idxes = [1 if img1Layer[k][l] else 0,
+                         1 if img2Layer[k][l] else 0]
+                mask1, mask2 = getMask(randomMode, *idxes)
 
                 for m in range(2):
                     for n in range(2):
                         y, x = k+m-1, l+n-1
-                        secret1Layer[y][x] = 0 if mask1[m][n] else 255
-                        secret2Layer[y][x] = 0 if mask2[m][n] else 255
+                        share1Layer[y][x] = 0 if mask1[m][n] else 255
+                        share2Layer[y][x] = 0 if mask2[m][n] else 255
 
                 visitedTable[k][l] = 1
 
-    cv2.imwrite('secret1.png', secret1Layer)
-    cv2.imwrite('secret2.png', secret2Layer)
+            rd_idx += 1
+
+    print(rd_idx)
+
+    cv2.imwrite('share1.png', share1Layer)
+    cv2.imwrite('share2.png', share2Layer)
 
     # 驗證疊圖
-    secret3Layer = clockwise(secret1Layer.copy())
+    share3Layer = clockwise(share1Layer.copy())
     verific1 = np.zeros((h, w))
     verific2 = np.zeros((h, w))
     for i in range(h):
         for j in range(w):
-            if secret1Layer[i][j] and secret2Layer[i][j]:
+            if share1Layer[i][j] and share2Layer[i][j]:
                 verific1[i][j] = 255
-            if secret2Layer[i][j] and secret3Layer[(i+1) % h][j]:
+            if share2Layer[i][j] and share3Layer[(i+1) % h][j]:
                 verific2[i][j] = 255
 
     cv2.imwrite('verific1.png', verific1)
