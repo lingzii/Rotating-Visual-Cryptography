@@ -37,7 +37,7 @@ def getMask(n, i, j):
     return masks
 
 
-def clockwise(m):
+def antiClockwise(m):
     n = m.shape[0]
     for i in range(n):
         for j in range(i+1, n):
@@ -82,11 +82,11 @@ def main():
     cv2.imwrite('share1.png', share1Layer)
     cv2.imwrite('share2.png', share2Layer)
 
-    share3Layer = clockwise(share1Layer.copy())
+    share3Layer = antiClockwise(share1Layer.copy())
     verific1 = np.zeros(share3Layer.shape)
     verific2 = np.zeros(share3Layer.shape)
-    for i in range(h*2):
-        for j in range(w*2):
+    for i in range(share3Layer.shape[0]):
+        for j in range(share3Layer.shape[1]):
             if share1Layer[i][j] and share2Layer[i][j]:
                 verific1[i][j] = 255
             if share2Layer[i][j] and share3Layer[i][j]:
